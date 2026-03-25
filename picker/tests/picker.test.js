@@ -277,6 +277,111 @@ test('multiple resets work correctly', () => {
     assert.deepStrictEqual(item, {q: 'x'});
 });
 
+// ─── pickSpecific ───────────────────────────────────────────
+
+console.log('\npickSpecific');
+
+test('removes specific item from remaining', () => {
+    const items = [{id: 1}, {id: 2}, {id: 3}];
+    const pool = createPool(items);
+    const result = pool.pickSpecific(items[1]);
+    assert.strictEqual(result, items[1]);
+    assert.strictEqual(pool.remaining, 2);
+});
+
+test('adds to history', () => {
+    const items = [{id: 1}, {id: 2}];
+    const pool = createPool(items);
+    pool.pickSpecific(items[0]);
+    assert.strictEqual(pool.historyLength, 1);
+    pool.pickSpecific(items[1]);
+    assert.strictEqual(pool.historyLength, 2);
+    assert(pool.canGoBack);
+});
+
+test('returns null for item not in remaining', () => {
+    const items = [{id: 1}, {id: 2}];
+    const pool = createPool(items);
+    pool.pickSpecific(items[0]);
+    const again = pool.pickSpecific(items[0]);
+    assert.strictEqual(again, null);
+});
+
+test('returns null for unknown item', () => {
+    const pool = createPool([{id: 1}]);
+    assert.strictEqual(pool.pickSpecific({id: 99}), null);
+});
+
+test('truncates forward history when used after back', () => {
+    const items = [{id: 1}, {id: 2}, {id: 3}];
+    const pool = createPool(items);
+    pool.pickSpecific(items[0]);
+    pool.pickSpecific(items[1]);
+    pool.back(); // viewing items[0]
+    pool.pickSpecific(items[2]); // should truncate forward
+    assert(!pool.canGoForward);
+    assert.strictEqual(pool.historyLength, 2);
+});
+
+test('works with random pick in same session', () => {
+    const items = [{id: 1}, {id: 2}, {id: 3}];
+    const pool = createPool(items);
+    pool.pickSpecific(items[1]);
+    const random = pool.pick();
+    assert(random.id === 1 || random.id === 3);
+    assert.strictEqual(pool.remaining, 1);
+});
+
+// ─── isShown ────────────────────────────────────────────────
+
+console.log('\nisShown');
+
+test('returns false for unpicked question', () => {
+    const items = [{id: 1}, {id: 2}];
+    const pool = createPool(items);
+    assert(!pool.isShown(items[0]));
+});
+
+test('returns true after pick', () => {
+    const items = [{id: 1}];
+    const pool = createPool(items);
+    pool.pick();
+    assert(pool.isShown(items[0]));
+});
+
+test('returns true after pickSpecific', () => {
+    const items = [{id: 1}, {id: 2}];
+    const pool = createPool(items);
+    pool.pickSpecific(items[1]);
+    assert(pool.isShown(items[1]));
+    assert(!pool.isShown(items[0]));
+});
+
+test('returns false after reset', () => {
+    const items = [{id: 1}];
+    const pool = createPool(items);
+    pool.pick();
+    pool.reset();
+    assert(!pool.isShown(items[0]));
+});
+
+// ─── all ────────────────────────────────────────────────────
+
+console.log('\nall');
+
+test('returns all questions', () => {
+    const items = [{id: 1}, {id: 2}, {id: 3}];
+    const pool = createPool(items);
+    assert.strictEqual(pool.all.length, 3);
+});
+
+test('all is stable after picks', () => {
+    const items = [{id: 1}, {id: 2}];
+    const pool = createPool(items);
+    pool.pick();
+    assert.strictEqual(pool.all.length, 2);
+});
+
 // ─── Integration: cleanBody + extractAuthor with real student formats ────
 
 console.log('\nIntegration (real student formats)');

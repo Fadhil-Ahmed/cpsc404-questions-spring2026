@@ -26,6 +26,14 @@
         <div class="keyboard-hint">Space / → = next &nbsp;·&nbsp; ← = back &nbsp;·&nbsp; R = reset</div>
     </div>
 
+    <div class="student-list" id="studentList">
+        <button class="student-list-toggle" id="studentListToggle">
+            <span id="toggleArrow">&#9654;</span> Student List
+            <span class="student-count" id="studentCount"></span>
+        </button>
+        <ul class="student-list-items" id="studentListItems"></ul>
+    </div>
+
     <div class="question-card" id="card">
         <div class="placeholder">Select a week to begin</div>
     </div>
@@ -38,8 +46,14 @@
         const resetBtn = document.getElementById('resetBtn');
         const card = document.getElementById('card');
         const status = document.getElementById('status');
+        const studentList = document.getElementById('studentList');
+        const studentListToggle = document.getElementById('studentListToggle');
+        const studentListItems = document.getElementById('studentListItems');
+        const studentCount = document.getElementById('studentCount');
+        const toggleArrow = document.getElementById('toggleArrow');
 
         let pool = null;
+        let listExpanded = false;
 
         async function loadWeeks() {
             try {
@@ -85,6 +99,7 @@
                 );
 
                 pool = createPool(fetched.filter(isNonEmpty));
+                renderStudentList();
                 updateStatus();
                 pickBtn.disabled = false;
                 resetBtn.disabled = false;
@@ -93,6 +108,51 @@
                 card.innerHTML = `<div class="placeholder">Error loading questions: ${err.message}</div>`;
             }
         }
+
+        function renderStudentList() {
+            studentListItems.innerHTML = '';
+            if (!pool) {
+                studentList.style.display = 'none';
+                return;
+            }
+            studentList.style.display = '';
+            studentCount.textContent = `(${pool.total})`;
+            const sorted = [...pool.all].sort((a, b) => a.author.localeCompare(b.author));
+            for (const q of sorted) {
+                const li = document.createElement('li');
+                li.textContent = q.author;
+                li.className = 'student-list-item';
+                if (pool.isShown(q)) li.classList.add('shown');
+                li.addEventListener('click', () => pickStudent(q));
+                studentListItems.appendChild(li);
+            }
+        }
+
+        function updateStudentListState() {
+            if (!pool) return;
+            const items = studentListItems.querySelectorAll('.student-list-item');
+            const sorted = [...pool.all].sort((a, b) => a.author.localeCompare(b.author));
+            items.forEach((li, i) => {
+                li.classList.toggle('shown', pool.isShown(sorted[i]));
+            });
+        }
+
+        function pickStudent(question) {
+            if (!pool) return;
+            if (!pool.isShown(question)) {
+                pool.pickSpecific(question);
+            }
+            showQuestion(question);
+            updateStatus();
+            updateStudentListState();
+            if (pool.isEmpty) pickBtn.disabled = true;
+        }
+
+        studentListToggle.addEventListener('click', () => {
+            listExpanded = !listExpanded;
+            studentListItems.classList.toggle('expanded', listExpanded);
+            toggleArrow.innerHTML = listExpanded ? '&#9660;' : '&#9654;';
+        });
 
         function updateStatus() {
             if (!pool) { status.textContent = ''; return; }
@@ -133,6 +193,7 @@
 
             showQuestion(pool.pick());
             updateStatus();
+            updateStudentListState();
 
             if (pool.isEmpty) {
                 pickBtn.disabled = true;
@@ -154,6 +215,7 @@
         function resetQuestionPool() {
             if (pool) pool.reset();
             updateStatus();
+            updateStudentListState();
             pickBtn.disabled = false;
             card.innerHTML = '<div class="placeholder">Pool reset — click "Pick a Question" or press Space</div>';
         }
@@ -169,6 +231,7 @@
                 resetBtn.disabled = true;
                 status.textContent = '';
                 card.innerHTML = '<div class="placeholder">Select a week to begin</div>';
+                renderStudentList();
             }
         });
 

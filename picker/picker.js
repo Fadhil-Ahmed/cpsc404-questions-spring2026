@@ -80,6 +80,15 @@ function createPool(questions) {
             historyIndex = history.length - 1;
             return item;
         },
+        pickSpecific(question) {
+            const index = remaining.indexOf(question);
+            if (index === -1) return null;
+            remaining.splice(index, 1);
+            history = history.slice(0, historyIndex + 1);
+            history.push(question);
+            historyIndex = history.length - 1;
+            return question;
+        },
         back() {
             if (historyIndex <= 0) return null;
             historyIndex--;
@@ -95,9 +104,11 @@ function createPool(questions) {
             history = [];
             historyIndex = -1;
         },
+        get all() { return all; },
         get remaining() { return remaining.length; },
         get total() { return all.length; },
         get isEmpty() { return remaining.length === 0; },
+        isShown(question) { return !remaining.includes(question); },
         get canGoBack() { return historyIndex > 0; },
         get canGoForward() { return historyIndex < history.length - 1; },
         get historyLength() { return history.length; },
